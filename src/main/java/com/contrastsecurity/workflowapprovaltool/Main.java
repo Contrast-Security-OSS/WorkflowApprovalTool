@@ -68,7 +68,6 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.ShellEvent;
 import org.eclipse.swt.events.ShellListener;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
@@ -156,7 +155,7 @@ public class Main implements PropertyChangeListener {
     private Table pendingVulTable;
     private List<Button> checkBoxList = new ArrayList<Button>();
     private List<Integer> selectedIdxes = new ArrayList<Integer>();
-    private Text noteTxt;
+    private Table noteTable;
     private List<ItemForVulnerability> auditLogs;
     private List<ItemForVulnerability> filteredAuditLogs = new ArrayList<ItemForVulnerability>();
     private Map<AuditLogCreatedDateFilterEnum, Date> auditLogCreatedFilterMap;
@@ -605,11 +604,11 @@ public class Main implements PropertyChangeListener {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 ItemForVulnerability selectedVul = filteredAuditLogs.get(pendingVulTable.getSelectionIndex());
-                List<String> lines = new ArrayList<String>();
+                noteTable.clearAll();
+                noteTable.removeAll();
                 for (Note note : selectedVul.getVulnerability().getNotes()) {
-                    lines.add(note.getNote());
+                    addColToNoteTable(note, -1);
                 }
-                noteTxt.setText(String.join(System.getProperty("line.separator"), lines));
             }
         });
 
@@ -618,7 +617,7 @@ public class Main implements PropertyChangeListener {
         column0.setResizable(false);
         TableColumn column1 = new TableColumn(pendingVulTable, SWT.CENTER);
         column1.setWidth(50);
-        column1.setText("有効");
+        column1.setText("対象");
         column1.addListener(SWT.Selection, new Listener() {
             @Override
             public void handleEvent(Event event) {
@@ -708,23 +707,26 @@ public class Main implements PropertyChangeListener {
             }
         });
         TableColumn column4 = new TableColumn(pendingVulTable, SWT.LEFT);
-        column4.setWidth(200);
+        column4.setWidth(300);
         column4.setText("脆弱性");
         TableColumn column5 = new TableColumn(pendingVulTable, SWT.CENTER);
-        column5.setWidth(200);
-        column5.setText("重大度");
+        column5.setWidth(150);
+        column5.setText("ルール名");
         TableColumn column6 = new TableColumn(pendingVulTable, SWT.CENTER);
-        column6.setWidth(200);
-        column6.setText("ステータス");
+        column6.setWidth(100);
+        column6.setText("重大度");
         TableColumn column7 = new TableColumn(pendingVulTable, SWT.CENTER);
-        column7.setWidth(200);
-        column7.setText("保留中ステータス");
-        TableColumn column8 = new TableColumn(pendingVulTable, SWT.LEFT);
-        column8.setWidth(300);
-        column8.setText("アプリケーション");
+        column7.setWidth(100);
+        column7.setText("ステータス");
+        TableColumn column8 = new TableColumn(pendingVulTable, SWT.CENTER);
+        column8.setWidth(100);
+        column8.setText("保留中ステータス");
         TableColumn column9 = new TableColumn(pendingVulTable, SWT.LEFT);
         column9.setWidth(300);
-        column9.setText("組織");
+        column9.setText("アプリケーション");
+        TableColumn column10 = new TableColumn(pendingVulTable, SWT.LEFT);
+        column10.setWidth(300);
+        column10.setText("組織");
 
         Button auditLogFilterBtn = new Button(auditLogListGrp, SWT.PUSH);
         GridData auditLogFilterBtnGrDt = new GridData(GridData.FILL_HORIZONTAL);
@@ -748,15 +750,39 @@ public class Main implements PropertyChangeListener {
             }
         });
 
-        noteTxt = new Text(auditLogListGrp, SWT.BORDER | SWT.MULTI | SWT.READ_ONLY);
-        noteTxt.setText("ここに脆弱性のコメントが表示されます。");
-        Color white = display.getSystemColor(SWT.COLOR_WHITE);
-        noteTxt.setBackground(white);
-        GridData noteTxtGrDt = new GridData(GridData.FILL_HORIZONTAL);
-        noteTxtGrDt.horizontalSpan = 3;
-        noteTxtGrDt.minimumHeight = 100;
-        noteTxtGrDt.heightHint = 100;
-        noteTxt.setLayoutData(noteTxtGrDt);
+        noteTable = new Table(auditLogListGrp, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI);
+        GridData noteTableGrDt = new GridData(GridData.FILL_HORIZONTAL);
+        noteTableGrDt.horizontalSpan = 3;
+        noteTableGrDt.minimumHeight = 100;
+        noteTableGrDt.heightHint = 150;
+        noteTable.setLayoutData(noteTableGrDt);
+        noteTable.setLinesVisible(true);
+        noteTable.setHeaderVisible(true);
+
+        TableColumn noteCol0 = new TableColumn(noteTable, SWT.NONE);
+        noteCol0.setWidth(0);
+        noteCol0.setResizable(false);
+        TableColumn noteCol1 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol1.setWidth(150);
+        noteCol1.setText("作成日時");
+        TableColumn noteCol2 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol2.setWidth(200);
+        noteCol2.setText("作成者");
+        TableColumn noteCol3 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol3.setWidth(100);
+        noteCol3.setText("承認処理");
+        TableColumn noteCol4 = new TableColumn(noteTable, SWT.LEFT);
+        noteCol4.setWidth(500);
+        noteCol4.setText("コメント");
+        TableColumn noteCol5 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol5.setWidth(100);
+        noteCol5.setText("変更前ステータス");
+        TableColumn noteCol6 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol6.setWidth(100);
+        noteCol6.setText("変更後ステータス");
+        TableColumn noteCol7 = new TableColumn(noteTable, SWT.CENTER);
+        noteCol7.setWidth(150);
+        noteCol7.setText("変更理由");
 
         approveBtn = new Button(auditLogListGrp, SWT.PUSH);
         GridData approveBtnGrDt = new GridData(GridData.FILL_HORIZONTAL);
@@ -959,11 +985,30 @@ public class Main implements PropertyChangeListener {
         item.setText(2, audit.getVulnerability().getFirstDetectedStr());
         item.setText(3, audit.getVulnerability().getLastDetectedStr());
         item.setText(4, audit.getVulnerability().getTitle());
-        item.setText(5, audit.getVulnerability().getSeverity());
-        item.setText(6, audit.getVulnerability().getStatus());
-        item.setText(7, audit.getVulnerability().getPendingStatus().getStatus());
-        item.setText(8, audit.getVulnerability().getApplication().getName());
-        item.setText(9, audit.getVulnerability().getOrg().getName());
+        item.setText(5, audit.getVulnerability().getRuleName());
+        item.setText(6, audit.getVulnerability().getSeverity());
+        item.setText(7, audit.getVulnerability().getStatus());
+        item.setText(8, audit.getVulnerability().getPendingStatus().getStatus());
+        item.setText(9, audit.getVulnerability().getApplication().getName());
+        item.setText(10, audit.getVulnerability().getOrg().getName());
+    }
+
+    private void addColToNoteTable(Note note, int index) {
+        if (note == null) {
+            return;
+        }
+        TableItem item = new TableItem(noteTable, SWT.CENTER);
+        item.setText(1, note.getCreationStr());
+        item.setText(2, note.getCreator());
+        if (note.getNote().isEmpty() && Boolean.valueOf(note.getProperty("pending.status.resolution"))) {
+            item.setText(3, "○");
+        } else {
+            item.setText(3, "");
+        }
+        item.setText(4, note.getNote());
+        item.setText(5, note.getProperty("status.change.previous.status"));
+        item.setText(6, note.getProperty("status.change.status"));
+        item.setText(7, note.getProperty("status.change.substatus"));
     }
 
     private void uiReset() {

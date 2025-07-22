@@ -36,7 +36,10 @@ public class Property {
     }
 
     public String getValue() {
-        return value;
+        if (this.value != null) {
+            return value;
+        }
+        return "";
     }
 
     public void setValue(String value) {
